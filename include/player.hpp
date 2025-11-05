@@ -2,7 +2,7 @@
 
 #include <string>
 
-enum PlayerColor { RED, BLUE, GREEN, YELLOW };
+enum PlayerColor { PURPLE, RED, GREEN, YELLOW , BLUE, MAGENTA, CYAN, WHITE, ORANGE };
 
 class Player {
   private:

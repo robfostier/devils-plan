@@ -3,6 +3,7 @@
 #include "board.hpp"
 #include "player.hpp"
 #include "tile_queue.hpp"
+#include <vector>
 
 class Game {
   private:

@@ -11,10 +11,10 @@ int main(void) {
     int nbPlayers = 0;
 
     while (true) {
-        std::cout << "Please enter number of players (1 - 9): ";
+        std::cout << "Please enter number of players (2 - 9): ";
         std::cin >> nbPlayers;
 
-        if (std::cin.fail() || nbPlayers < 1 || nbPlayers > 9) {
+        if (std::cin.fail() || nbPlayers < 2 || nbPlayers > 9) {
             std::cin.clear(); // Clear fail state
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Empty the input buffer
             std::cout << "Invalid input. Try again." << std::endl << std::endl;

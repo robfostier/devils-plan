@@ -1,6 +1,10 @@
 #include "tile_queue.hpp"
 
-TileQueue::TileQueue(int nbPlayers) {
+#include <algorithm>
+#include <random>
+#include <stdexcept>
+
+TileQueue::TileQueue(size_t nbPlayers) {
     size_t nbTiles = (nbPlayers * 32 + 1) / 3; // 32 / 3 = 10.67 tiles per player, + 1 for rounding
 
     // Make a shuffled list of indices to select random shapes

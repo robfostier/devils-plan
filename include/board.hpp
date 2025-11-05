@@ -21,24 +21,24 @@ Representation of a cell on the board.
 Contains a reference to its type and a pointer to the owning player, if any.
 */
 struct Cell {
-    CellType &type;
+    CellType type;
     Player *owner; // Pointer to the player who owns this cell, nullptr if unowned
 };
 
 // Representation of the game board.
 class Board {
   private:
-    int size;
-    Cell **grid;
+    size_t size;
+    Cell **grid; // Dynamic 2D array of Cells
 
   public:
-    Board(int size);
+    Board(size_t nbPlayers);
     ~Board();
 
     int getSize() const;
-    Cell getCell(int x, int y) const;
+    const Cell& getCell(int x, int y) const;
 
-    void placeBonus(int nbPlayers);
+    void placeBonus(size_t nbPlayers);
 
     bool canPlaceTile(int x, int y, const Tile &tile, const Player &player) const;
     void placeTile(int x, int y, const Tile &tile, const Player &player);

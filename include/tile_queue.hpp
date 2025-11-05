@@ -2,19 +2,16 @@
 
 #include "tile.hpp"
 #include "tile_shapes.hpp"
-#include <algorithm>
 #include <deque>
-#include <functional>
-#include <random>
-#include <stdexcept>
 #include <vector>
+#include <functional>
 
 class TileQueue {
   private:
     std::deque<Tile> tiles; // Using a deque to access tiles by index
 
   public:
-    TileQueue(int nbPlayers);
+    TileQueue(size_t nbPlayers);
 
     // Draw the next tile from the queue.
     Tile drawTile();
