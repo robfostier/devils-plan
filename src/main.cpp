@@ -30,10 +30,9 @@ int main(void) {
         break;
     }
 
-    // Game game(static_cast<size_t>(nbPlayers)); // Safe to cast after validation
-    // game.setup();
-    // game.play();
-    // game.endGame();
+    Game game(static_cast<size_t>(nbPlayers)); // Safe to cast after validation
+
+    game.play();
 
     return 0;
 }

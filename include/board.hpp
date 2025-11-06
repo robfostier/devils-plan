@@ -10,7 +10,6 @@ Can be empty, grass, stone, or various bonus types.
 enum CellType {
     EMPTY,
     GRASS,
-    STONE,
     BONUS_EXCHANGE,
     BONUS_STONE,
     BONUS_ROBBERY
@@ -28,17 +27,19 @@ struct Cell {
 // Representation of the game board.
 class Board {
   private:
-    size_t size;
+    const size_t size;
     Cell **grid; // Dynamic 2D array of Cells
 
   public:
     Board(size_t nbPlayers);
     ~Board();
 
-    int getSize() const;
-    const Cell& getCell(int x, int y) const;
+    void setup(size_t nbPlayers);
 
-    void placeBonus(size_t nbPlayers);
+    size_t getSize() const { return size; };
+    const Cell& getCell(int x, int y) const { return grid[x][y]; }
+
+    void placeBonus(CellType bonusType);
 
     bool canPlaceTile(int x, int y, const Tile &tile, const Player &player) const;
     void placeTile(int x, int y, const Tile &tile, const Player &player);

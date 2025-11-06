@@ -9,9 +9,10 @@ class Game {
   private:
     Board board;
     TileQueue tileQueue;
+    size_t nbPlayers;
     std::vector<Player> players;
-    size_t currentRound;
-    const size_t maxRounds;
+    size_t currentRound = 0;
+    static const size_t maxRounds = 9;
 
   public:
     Game(size_t nbPlayers);

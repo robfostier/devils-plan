@@ -5,14 +5,14 @@
 
 class Tile {
   private:
-    const Shape& shape;
-    int rotation;
+    const Shape &shape;
+    int rotation = 0;
 
   public:
-    Tile(const Shape& shape) : shape(shape), rotation(0) {}
+    Tile(const Shape &shape) : shape(shape), rotation(0) {}
 
-    const Shape& getShape() const { return shape; }
-    
+    const Shape &getShape() const { return shape; }
+
     // Rotate the tile 90 degrees clockwise.
-    void rotateClockwise();
+    void rotateClockwise() { rotation = (rotation + 90) % 360; }
 };
