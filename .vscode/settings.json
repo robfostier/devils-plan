@@ -54,6 +54,7 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "iostream": "cpp",
-        "cstdarg": "cpp"
+        "cstdarg": "cpp",
+        "set": "cpp"
     }
 }

@@ -1,8 +1,7 @@
 Changer setup game:
 demander nom et demander couleur
-robbery bonus
-flip / rotation
-tiles se placent avec rotation de 90°
+logique de victoire
+final 1x1 tile
 
 +-[ Tile Queue ]----------------------------------------------------+
 |-------------------------------------------------------------------|

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <array>
+#include <set>
 
 Board::Board(size_t nbPlayers) : size(nbPlayers < 5 ? 20 : 30), grid(nullptr) {
     setup(nbPlayers);
@@ -40,6 +41,11 @@ void Board::setup(size_t nbPlayers) {
         placeBonus(BONUS_ROBBERY);
 }
 
+void Board::setCell(std::pair<size_t, size_t> coords, CellType type, Player *owner) {
+    grid[coords.first][coords.second].type = type;
+    grid[coords.first][coords.second].owner = owner;
+}
+
 void Board::placeBonus(CellType bonusType) {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -64,44 +70,8 @@ void Board::placeBonus(CellType bonusType) {
     grid[x][y].type = bonusType;
 }
 
-// Display the board in the terminal.
-void Board::display() const {
-    for (size_t y = 0; y < size; ++y) {
-        for (size_t x = 0; x < size; ++x) {
-            switch (grid[x][y].type) {
-            case EMPTY:
-                std::cout << "・";
-                break;
-            case GRASS:
-                if (!grid[x][y].owner) // Avoid segfault
-                    throw std::runtime_error("Board::display: GRASS cell has no owner");
-
-                std::cout << colorize(grid[x][y].owner->getColor())
-                          << "██"
-                          << resetColor;
-                break;
-            case STONE:
-                std::cout << "\033[37m" // Light gray color
-                          << "██"
-                          << resetColor;
-                break;
-            case BONUS_EXCHANGE:
-                std::cout << "Ｅ";
-                break;
-            case BONUS_STONE:
-                std::cout << "Ｓ";
-                break;
-            case BONUS_ROBBERY:
-                std::cout << "Ｒ";
-                break;
-            }
-        }
-        std::cout << std::endl;
-    }
-}
-
 bool Board::canPlaceTile(std::pair<size_t, size_t> coords, const Tile &tile, const Player &player) const {
-    const Shape &shape = tile.getShape();
+    Shape shape = tile.getShape();
     const bool isStartingTile = (shape == STARTING_TILE);
 
     const std::array<std::pair<int,int>,4> directions = {{{-1,0}, {1,0}, {0,-1}, {0,1}}};
@@ -150,24 +120,15 @@ bool Board::canPlaceTile(std::pair<size_t, size_t> coords, const Tile &tile, con
     return isStartingTile || touchesOwnCell;
 }
 
-void Board::placeTile(std::pair<size_t, size_t> coords, const Tile &tile, Player *player) {
-    const Shape &shape = tile.getShape();
+void Board::placeTile(std::pair<size_t, size_t> coords, const Tile &tile, Player *player, bool bStealable) {
+    Shape shape = tile.getShape();
 
-    // Place the tile on the board
-    for (size_t i = 0; i < shape.size(); ++i) {
-        for (size_t j = 0; j < shape[i].size(); ++j) {
-            // Skip empty parts of the tile
-            if (!shape[i][j])
-                continue;
+    const std::array<std::string, 12> symbols = {"██", "██", "▒▒", "░░", "##", "[]", "@@", "&&", "$$", "++", "00", "OO"};
+    std::set<std::string> neighbourSymbols;
 
-            Cell &cell = grid[coords.first + i][coords.second + j];
-            cell.type = GRASS;
-            cell.owner = player;
-        }
-    }
-
-    // Check orthogonal neighbours for bonuses (second loop to make sure tile is fully placed before checking neighbours)
     const std::array<std::pair<int,int>,4> directions = {{{-1,0}, {1,0}, {0,-1}, {0,1}}};
+
+    // Check orthogonal neighbours for bonuses and print characters
     for (size_t i = 0; i < shape.size(); ++i) {
         for (size_t j = 0; j < shape[i].size(); ++j) {
             if (!shape[i][j])
@@ -185,22 +146,29 @@ void Board::placeTile(std::pair<size_t, size_t> coords, const Tile &tile, Player
 
                 Cell &neighbourCell = grid[newX][newY];
 
-                // Apply bonus effects
+                // Apply bonus effects or fill neighbourChars set
                 switch (neighbourCell.type) {
+                    case GRASS:
+                        if (!neighbourCell.printSymbol.empty())
+                            neighbourSymbols.insert(neighbourCell.printSymbol);
+                        break;
                     case BONUS_EXCHANGE:
                         player->addCoupon();
                         neighbourCell.type = GRASS;
                         neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｅ";
                         break;
                     case BONUS_STONE:
                         player->addStoneBonus();
                         neighbourCell.type = GRASS;
                         neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｓ";
                         break;
                     case BONUS_ROBBERY:
                         player->addRobberyBonus();
                         neighbourCell.type = GRASS;
                         neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｒ";
                         break;
                     default:
                         break;
@@ -208,9 +176,119 @@ void Board::placeTile(std::pair<size_t, size_t> coords, const Tile &tile, Player
             }
         }
     }
+
+    // Chose available character for printing
+    std::string availableSymbol = "██";
+    for (std::string s : symbols) {
+        if (neighbourSymbols.find(s) == neighbourSymbols.end()) {
+            availableSymbol = s;
+            break;
+        }
+    }
+
+    // Place the tile on the board
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
+            // Skip empty parts of the tile
+            if (!shape[i][j])
+                continue;
+
+            Cell &cell = grid[coords.first + i][coords.second + j];
+            cell.type = GRASS;
+            cell.owner = player;
+            cell.printSymbol = availableSymbol;
+        }
+    }
+
+    placedTiles.push_back({tile, coords, player, bStealable});
 }
 
-void Board::setCell(std::pair<size_t, size_t> coords, CellType type, Player *owner) {
-    grid[coords.first][coords.second].type = type;
-    grid[coords.first][coords.second].owner = owner;
+std::optional<Tile> Board::stealTile(std::pair<size_t, size_t> target, Player *newOwner) {
+    // Go through every tile in the board
+    for (auto it = placedTiles.begin(); it != placedTiles.end(); ++it) {
+        PlacedTile &placedTile = *it;
+
+        // Avoid starting tiles
+        if (!placedTile.bStealable)
+            continue;
+
+        Shape shape = placedTile.tile.getShape();
+        size_t posX = placedTile.coords.first;
+        size_t posY = placedTile.coords.second;
+
+        // Go through every cell covered by that tile
+        for (size_t i = 0; i < shape.size(); ++i) {
+            for (size_t j = 0; j < shape[i].size(); ++j) {
+                if (!shape[i][j])
+                    continue;
+
+                if (posX + i == target.first && posY + j == target.second) {
+                    Player *oldOwner = placedTile.owner;
+
+                    // Player can't steal tile from itself
+                    if (oldOwner == newOwner)
+                        return std::nullopt;
+
+                    // Remove stolen tile from the board
+                    for (size_t i2 = 0; i2 < shape.size(); ++i2) {
+                        for (size_t j2 = 0; j2 < shape[i2].size(); ++j2) {
+                            if (!shape[i2][j2])
+                                continue;
+
+                            Cell &cell = grid[posX + i2][posY + j2];
+                            cell.type = EMPTY;
+                            cell.owner = nullptr;
+                            cell.printSymbol = "";
+                        }
+                    }
+
+                    Tile stolenTile = placedTile.tile;
+
+                    placedTiles.erase(it);
+
+                    return stolenTile;
+                }
+            }
+        }
+    }
+
+    // No tile found there
+    return std::nullopt;
+}
+
+// Display the board in the terminal.
+void Board::display() const {
+    for (size_t x = 0; x < size; ++x) {
+        for (size_t y = 0; y < size; ++y) {
+            const Cell &cell = grid[x][y];
+
+            switch (cell.type) {
+            case EMPTY:
+                std::cout << "・";
+                break;
+            case GRASS:
+                std::cout << colorize(cell.owner->getColor())
+                          << cell.printSymbol
+                          << resetColor;
+                break;
+            case STONE:
+                std::cout << "\033[37m" // Light gray color
+                          << "██"
+                          << resetColor;
+                break;
+            case BONUS_EXCHANGE:
+                std::cout << "Ｅ";
+                break;
+            case BONUS_STONE:
+                std::cout << "Ｓ";
+                break;
+            case BONUS_ROBBERY:
+                std::cout << "Ｒ";
+                break;
+            default:
+                break;
+            }
+        }
+        std::cout << std::endl;
+    }
 }

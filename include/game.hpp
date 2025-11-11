@@ -18,6 +18,10 @@ class Game {
     Game(size_t nbPlayers);
 
     void setup();
+
+    void display(Player &player, Tile &tile, bool bDisplayQueue) const;
+    void placingTile(Player &player, Tile &tile, bool bStealable, bool bDisplayQueue);
+
     void play();
     void playTurn(Player &player);
     void endGame();

@@ -99,7 +99,7 @@ int getIntegerInputInRange(const std::string &prompt, int min, int max) {
                       << std::endl;
             continue;
         }
-
+        
         return x;
     }
 }
