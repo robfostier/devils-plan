@@ -14,8 +14,23 @@ void clearTerminal(void) {
 
     // Header
     std::cout << "+--------------------------------+" << std::endl;
-    std::cout << "|   Laying grass  -  데블스 플랜   |" << std::endl;
+    std::cout << "|  Laying grass  -  데블스 플랜  |" << std::endl;
     std::cout << "+--------------------------------+" << std::endl << std::endl;
+}
+
+std::string playerColorToString(PlayerColor color) {
+    switch (color) {
+        case PURPLE: return "Purple";
+        case RED: return "Red";
+        case GREEN: return "Green";
+        case YELLOW: return "Yellow";
+        case BLUE: return "Blue";
+        case MAGENTA: return "Magenta";
+        case CYAN: return "Cyan";
+        case TURQUOISE: return "Turquoise";
+        case ORANGE: return "Orange";
+        default: return "UNKNOWN";
+    }
 }
 
 Colorize colorize(PlayerColor color) {

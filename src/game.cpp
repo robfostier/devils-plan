@@ -1,8 +1,11 @@
 #include "game.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <iostream>
 #include <optional>
-#include <algorithm>
+#include <set>
+#include <limits>
+
 
 Game::Game(size_t nbPlayers)
     : board(nbPlayers), tileQueue(nbPlayers), nbPlayers(nbPlayers), players(), currentRound(0) {
@@ -11,17 +14,46 @@ Game::Game(size_t nbPlayers)
 
 void Game::setup() {
     // Initialize players
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    std::set<PlayerColor> availableColors = { PURPLE, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, TURQUOISE, ORANGE };
     players.reserve(nbPlayers);
+
     for (size_t i = 0; i < nbPlayers; ++i) {
-        std::string name = "Player " + std::to_string(i + 1);
-        PlayerColor color = static_cast<PlayerColor>(i % 9); // Cycle colors
+        clearTerminal();
+        
+        std::string name;
+        std::cout << "Player " << (i + 1) << " - Choose your name: ";
+        std::getline(std::cin, name);
+
+        std::cout << std::endl;
+
+        std::cout << "Choose your color: " << std::endl;
+        size_t index = 1;
+        for (auto c : availableColors)
+            std::cout << index++ << ". " << colorize(c) << playerColorToString(c) << resetColor << std::endl;
+
+        int choiceColor = 0;
+        while (true) {
+            std::cin >> choiceColor;
+            if (choiceColor >= 1 && choiceColor <= static_cast<int>(availableColors.size()))
+                break;
+            std::cout << "Invalid choice. Try again.\n";
+        }
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        auto it = availableColors.begin();
+        std::advance(it, choiceColor - 1);
+        PlayerColor color = *it;
+        availableColors.erase(it);
+
         players.emplace_back(name, color);
     }
 }
 
 void Game::display(Player &player, Tile &tile, bool bDisplayQueue) const {
     clearTerminal();
-    std::cout << player.getName() << " - Round " << currentRound << ":" << std::endl
+    std::cout << colorize(player.getColor()) << player.getName() << resetColor << " - Round " << currentRound << ":" << std::endl
               << std::endl;
 
     std::cout << "Current Tile:" << std::endl;
@@ -106,7 +138,7 @@ void Game::play() {
     clearTerminal();
     board.display();
 
-    std::cout << winner.getName() << " wins the game." << std::endl;
+    std::cout << colorize(winner.getColor()) << winner.getName() << resetColor << " wins the game." << std::endl;
     std::cout << "Thank you for playing !"  << std::endl;
 }
 
@@ -119,7 +151,7 @@ void Game::playTurn(Player &player) {
 
         Tile startingTile = Tile(STARTING_TILE);
 
-        std::cout << player.getName() << " - Starting location:" << std::endl
+        std::cout << colorize(player.getColor()) << player.getName() << resetColor << " - Starting location:" << std::endl
                   << std::endl;
 
         std::pair<size_t, size_t> coords = {0, 0};
@@ -312,7 +344,7 @@ void Game::exchangeRemainingCoupons(Player &player) {
 
         Tile lastTile = Tile(STARTING_TILE);
 
-        std::cout << player.getName() << " - " << coupons << " exchange coupons remaining:" << std::endl
+        std::cout << colorize(player.getColor()) << player.getName() << resetColor << " - " << coupons << " exchange coupons remaining:" << std::endl
                   << std::endl;
 
         std::pair<size_t, size_t> coords = {0, 0};

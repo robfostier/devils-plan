@@ -22,7 +22,7 @@ EXECDIR=bin
 
 SRCS=$(wildcard $(SRCDIR)/*.cpp)
 OBJS=$(SRCS:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
-EXEC=$(EXECDIR)/devilsplan$(EXT)
+EXEC=$(EXECDIR)/layingrass$(EXT)
 
 # Règles
 all: $(EXEC)

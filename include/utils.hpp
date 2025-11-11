@@ -14,6 +14,9 @@ struct Colorize {
     explicit Colorize(PlayerColor c) : color(c) {}
 };
 
+// Convert a PlayerColor to string
+std::string playerColorToString(PlayerColor color);
+
 // Create a Colorize object for the given PlayerColor.
 Colorize colorize(PlayerColor color);
 
