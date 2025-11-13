@@ -52,6 +52,64 @@ make
 ---
 ### Game rules
 
+#### Overview
+
+Laying Grass is a turn-based strategy game, played by 2 to 9 players. Each player must expand their territory on a shared grid by placing grass tiles of various shapes.
+The goal is to form the largest possible square territory (e.g., 7x7). In case of a tie, the player with the most grass tiles wins.
+
+#### Setup
+
+- For 2 to 4 players, the grid is 20x20 squares.
+- For 5 to 9 players, the grid is 30x30 squares. 
+- Special bonus squares are randomly placed on the board (not on edges or next to each other).
+- Each player enters a name and color, and receives:
+    - One 1x1 starting tile
+    - One tile exchange coupon
+
+Players begin by placing their starting tile anywhere on the grid.
+
+#### Tile distribution
+
+- There are 96 possible tile shapes.
+- Only a limited number of tiles will be used depending on the number of players: 32/3 (10.6..67) tiles per player (e.g., 43 for 4 players), rounded.
+- Tiles are drawn in a predetermined random order, forming a shared tile queue.
+
+Each turn, the current player receives the first tile from the queue.
+
+If the player wants to exchange it, they can use a tile exchange coupon to pick one of the next five tiles instead.
+The chosen tile is removed from the queue, and the tile immediately following it becomes the next one for the next player.
+The skipped tiles (before the chosen one) are placed back at the back of the queue.
+
+#### Tile placement rules
+
+- Tiles must always be adjacent to the player’s territory (one of their existing tiles).
+- Tiles cannot overlap or touch other players’ territories.
+- Tiles can be rotated or flipped before placement.
+- Once placed, tiles cannot be moved.
+- If a player cannot place their tile, it is discarded, and they skip their turn.
+
+#### End of game
+
+The game lasts nine rounds, meaning each player will place up to nine tiles.
+At the very end, players may spend any remaining tile exchange coupon to buy and place 1x1 grass tiles wherever they wish.
+
+#### Bonus types
+
+1. Exchange Square :
++1 tile exchange coupon. 1.5 per player (rounded up).
+
+2. Stone Square	:
+Place a stone tile anywhere. Other tiles can’t be placed there. Must be used immediately. Removing it costs 1 coupon.	0.5 per player (rounded up).
+
+3. Robbery Square:
+Steal one tile from another player’s territory and add it to yours. Must be used immediately. 1 per player.
+
+#### Win conditions
+
+At the end of the game :
+1. The player with the largest square-shaped territory wins (e.g., 7x7).
+2. If there’s a tie, the player with the most grass tiles overall wins.
+
 ---
 ## Technical documentation
 
@@ -650,10 +708,8 @@ const Player& Game::determineWinner() const {
             for (size_t y = 0; y < boardSize; ++y) {
                 const Cell &cell = board.getCell({x, y});
                 if (cell.owner == &player) {
-                    if (x == 0 || y == 0)
-                        table[x][y] = 1;
-                    else
-                        table[x][y] = 1 + std::min({table[x - 1][y], table[x][y - 1], table[x - 1][y - 1]});
+                    if (x == 0 || y == 0) table[x][y] = 1;
+                    else table[x][y] = 1 + std::min({table[x - 1][y], table[x][y - 1], table[x - 1][y - 1]});
 
                     if (table[x][y] > largestSquare){
                         largestSquare = table[x][y];
@@ -668,8 +724,7 @@ const Player& Game::determineWinner() const {
         for (size_t x = bestX - largestSquare + 1; x < bestX; ++x) {
             for (size_t y = bestY - largestSquare + 1; y < bestY; ++y) {
                 const Cell &cell = board.getCell({x, y});
-                if (cell.type == GRASS && cell.owner == &player)
-                    grassCount++;
+                if (cell.type == GRASS && cell.owner == &player) grassCount++;
             }
         }
 
@@ -697,3 +752,378 @@ The method computes these scores for each player using the following logic :
 - It then compares `largestSquare` and `grassCount` to `toBeat`. If `largestSquare` beats `toBeat.first` or if it equals it and `grassCount` beats `toBeat.second`, that player has set a new best Score. It updates `toBeat` and store that player as the provisional winner.
 
 Finally, after computing the scores for each player, the method has determined the winner and returns it.
+
+#### Board::canPlaceTile()
+
+```c++
+// Simplified to bare-bone logic
+bool Board::canPlaceTile(std::pair<size_t, size_t> coords, const Tile &tile, const Player &player, bool bIsStartingTile) const {
+    Shape shape = tile.getShape();
+    const std::array<std::pair<int,int>,4> directions = {{{-1,0}, {1,0}, {0,-1}, {0,1}}};
+    bool bTouchesOwnCell = false;
+
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[0].size(); ++j) {
+            size_t x = coords.first + i;
+            size_t y = coords.second + j;
+
+            if (x >= size || y >= size) return false;
+            if (grid[x][y].type == GRASS || grid[x][y].type == STONE) return false;
+
+            for (const auto &dir : directions) {
+                int newX = static_cast<int>(x) + dir.first;
+                int newY = static_cast<int>(y) + dir.second;
+                if (newX < 0 || newY < 0 || newX >= static_cast<int>(size) || newY >= static_cast<int>(size))
+                    continue;
+
+                const Player *owner = grid[newX][newY].owner;
+                if (owner) {
+                    if (owner != &player) return false;
+                    if (!bIsStartingTile) bTouchesOwnCell = true;
+                }
+            }
+        }
+    }
+
+    return bIsStartingTile || bTouchesOwnCell;
+}
+```
+
+This method is used to determine player input validation when trying to place tiles on the board. It returns a boolean, indicating if a player can place a tile at specified coordinates :
+- First, it defines an array of directions. In this program, coordinates are represented by pairs of unsigned integers. These 4 coordinates mark directions. They will be used to check orthogonal adjacency.
+- It then loops over each cell in the tile's shape :
+    - To find the "global" position of each tile cell in the board, it adds the coordinates input by the user to the "local" position of the cell in its tile.
+    - It then checks for two conditions : if the cell's global coordinates are outside board bounds or if they point to a location already covered by `GRASS` or `STONE`, the method returns false. This placement is invalid.
+    - It then checks for orthogonal neighbours, by looping over the directions array :
+        - If it finds a cell that already has an owner and that owner is not the same player as the one trying to place the tile, it returns false. This placement is invalid.
+        - If it finds a cell that already has an owner and that owner is the same player as the one trying to place the tile, it marks the tile as touching own territory using `bool bTouchesOwnCell`.
+- It can then make the final validation check : if the player is trying to place his `STARTING_TILE` (indicated by a boolean passed in function parameter) or if `bTouchesOwnCell` was marked true by the last procedure, it returns true. This placement is valid. Otherwise, it returns false.
+
+#### Board::placeTile()
+
+```c++
+// Simplified to bare-bone logic
+void Board::placeTile(std::pair<size_t, size_t> coords, const Tile &tile, Player *player, bool bStealable) {
+    Shape shape = tile.getShape();
+    const std::array<std::string, 12> symbols = {"██", "██", "▒▒", "░░", ...};
+    std::set<std::string> neighbourSymbols;
+    const std::array<std::pair<int,int>,4> directions = {{{-1,0}, {1,0}, {0,-1}, {0,1}}};
+
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
+            if (!shape[i][j]) continue;
+
+            size_t x = coords.first + i;
+            size_t y = coords.second + j;
+
+            for (const auto &dir : directions) {
+                int newX = static_cast<int>(x) + dir.first;
+                int newY = static_cast<int>(y) + dir.second;
+
+                if (newX < 0 || newY < 0 || newX >= static_cast<int>(size) || newY >= static_cast<int>(size))
+                    continue;
+
+                Cell &neighbourCell = grid[newX][newY];
+
+                if (neighbourCell.type == GRASS && !neighbourCell.printSymbol.empty())
+                    neighbourSymbols.insert(neighbourCell.printSymbol);
+            }
+        }
+    }
+
+    std::string availableSymbol = "██";
+    for (std::string s : symbols) {
+        if (neighbourSymbols.find(s) == neighbourSymbols.end()) {
+            availableSymbol = s;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
+            if (!shape[i][j]) continue;
+
+            Cell &cell = grid[coords.first + i][coords.second + j];
+            cell.type = GRASS;
+            cell.owner = player;
+            cell.printSymbol = availableSymbol;
+        }
+    }
+
+    for (size_t i = 0; i < shape.size(); ++i) {
+        for (size_t j = 0; j < shape[i].size(); ++j) {
+            if (!shape[i][j]) continue;
+
+            size_t x = coords.first + i;
+            size_t y = coords.second + j;
+
+            for (const auto &dir : directions) {
+                int newX = static_cast<int>(x) + dir.first;
+                int newY = static_cast<int>(y) + dir.second;
+
+                if (newX < 0 || newY < 0 || newX >= static_cast<int>(size) || newY >= static_cast<int>(size)) continue;
+
+                Cell &neighbourCell = grid[newX][newY];
+
+                switch (neighbourCell.type) {
+                    case BONUS_EXCHANGE:
+                        player->addCoupon();
+                        neighbourCell.type = GRASS;
+                        neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｅ";
+                        break;
+                    case BONUS_STONE:
+                        player->addStoneBonus();
+                        neighbourCell.type = GRASS;
+                        neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｓ";
+                        break;
+                    case BONUS_ROBBERY:
+                        player->addRobberyBonus();
+                        neighbourCell.type = GRASS;
+                        neighbourCell.owner = player;
+                        neighbourCell.printSymbol = "Ｒ";
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    placedTiles.push_back({tile, coords, player, bStealable});
+}
+```
+
+This method is responsible for placing a tile on the board. It is not responsible for any validation check : 
+- Using the same logic as `Board::canPlaceTile()`, it make a first pass on orthogonal neighbours. It looks for any previously placed `GRASS` cell. If it finds one, it adds its `Cell::printSymbol` to the set `neighboursSymbols`. It keeps track of this information so that no two adjacent tiles use the same printSymbol. That allows the players to distinguish previously placed tiles, for robbery bonuses.
+- It then choses the first symbol in the array `symbols` not in the set `neighboursSymbols` as an availableSymbol.
+- It then places the tile on the board. Logic here is straightforward.
+- It then makes a second pass on orthogonal neighbours. It is now looking for bonuses. It couldn't do this on the first pass, because bonuses overriden by the placed tile must not be credited to the player, so we needed to place the tile before this lookup (and we needed to lookup for symbols before placing the tile).
+Again, it uses the same logic for orthogonal neighbours checks. If it finds either `BONUS_EXCHANGE`, `BONUS_STONE` or `BONUS_ROBBERY`, it changes those cells to `GRASS` and credits the player of a corresponding coupon.
+- Finally, it pushes the tile into `Board::placedTiles` to keep a record of it, for robbery bonuses logic.
+
+#### Board::stealTile()
+
+```c++
+// Simplified to bare-bone logic
+std::optional<Tile> Board::stealTile(std::pair<size_t, size_t> target, Player *newOwner) {
+    for (auto it = placedTiles.begin(); it != placedTiles.end(); ++it) {
+        PlacedTile &placedTile = *it;
+        if (!placedTile.bStealable || placedTile.owner == newOwner) continue;
+
+        Shape shape = placedTile.tile.getShape();
+        size_t posX = placedTile.coords.first;
+        size_t posY = placedTile.coords.second;
+
+        for (size_t i = 0; i < shape.size(); ++i) {
+            for (size_t j = 0; j < shape[i].size(); ++j) {
+                if (!shape[i][j]) continue;
+
+                if (posX + i == target.first && posY + j == target.second) {
+                    for (size_t i2 = 0; i2 < shape.size(); ++i2) {
+                        for (size_t j2 = 0; j2 < shape[i2].size(); ++j2) {
+                            if (!shape[i2][j2]) continue;
+
+                            Cell &cell = grid[posX + i2][posY + j2];
+                            cell.type = EMPTY;
+                            cell.owner = nullptr;
+                            cell.printSymbol = "";
+                        }
+                    }
+                    Tile stolenTile = placedTile.tile;
+                    placedTiles.erase(it);
+                    return stolenTile;
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+```
+
+This method is responsible for removing a tile from `Board::placedTiles` at specified coordinates, and returning it. If it is unable to find such a tile, or if this tile can not be stolen, it returns `nullopt`. It acts as the main logic operator for robbery bonuses, looping over every tile in `Board::placedTiles` using iterators :
+- If that placed tile is not stealable (meaning it is another player's starting 1x1 tile), or if it belongs to the player trying to steal, it skips that tile.
+- It then goes through every cell covered by that tile. If a cell's global position matches the target coordinates specified as parameter, it found the target placed tile.
+It removes the tile from the board by emptying each cell's content and erasing the tile from `Board::placedTiles` and it then returns it.
+- If none of the previous checks matched, it returns `nullopt`.
+
+---
+### Displaying methods
+
+#### Tile::print()
+
+```c++
+void Tile::print() const {
+    for (const auto &row : getShape()) {
+        for (uint8_t cell : row)
+            std::cout << (cell ? "██" : "  ");
+        std::cout << std::endl;
+    }
+}
+```
+
+This method is used to display a drawn tile, outside the board. It simply prints `██` for positive spaces and ` ` for negative spaces.
+
+#### TileQueue::printExchangeQueue()
+
+```c++
+// Simplified to bare-bone logic
+void TileQueue::printExchangeQueue(const std::vector<std::reference_wrapper<const Tile>> &tiles) const {
+    size_t maxHeight = 0;
+    for (const auto &tile : tiles) {
+        const Shape &shape = tile.get().getShape();
+        if (shape.size() > maxHeight) maxHeight = shape.size();
+    }
+
+    for (size_t row = 0; row < maxHeight; ++row) {
+        for (const auto &tile : tiles) {
+            const Shape &shape = tile.get().getShape();
+            size_t tileHeight = shape.size();
+            size_t offset = (maxHeight - tileHeight) / 2;
+
+            if (row < offset || row >= offset + tileHeight) {
+                for (size_t col = 0; col < shape[0].size(); ++col)
+                    std::cout << "  ";
+            } else {
+                const auto &tileRow = shape[row - offset];
+                for (uint8_t cell : tileRow)
+                    std::cout << (cell ? "██" : "  ");
+            }
+
+            std::cout << "  ";
+        }
+    }
+}
+```
+
+This methods prints the next n tiles in the queue. It prints multiple tiles on same lines, and aligns each tile vertically :
+- It first determines the maximum height of the tiles to align.
+- It then prints each row of the tiles, looping over the tiles to print out :
+    - For each tile, it computes an unsigned integer `offset`, which will determine the number of blank rows after and before the tile, to align all the tiles vertically
+    - It then either prints empty spaces, for rows outside the tile's height, or it prints the corresponding row of the tile.
+    - Finally, it prints blank spaces before moving on to the next tile in the row.
+
+#### Board::display()
+
+```c++
+void Board::display() const {
+    std::vector<std::string> labels;
+
+    for (size_t i = 0; i < size; ++i) {
+        char32_t ch;
+        if (i < 26) ch = 0xFF21 + i; // "Ａ" to "Ｚ"
+        else ch = 0xFF41 + (i - 26); // "ａ" to "ｚ"
+
+        // Converting UTF-32 to UTF-8
+        std::string utf8;
+        if (ch <= 0x7F) utf8.push_back(ch);
+        else if (ch <= 0x7FF) {
+            utf8.push_back(0xC0 | ((ch >> 6) & 0x1F));
+            utf8.push_back(0x80 | (ch & 0x3F));
+        } else if (ch <= 0xFFFF) {
+            utf8.push_back(0xE0 | ((ch >> 12) & 0x0F));
+            utf8.push_back(0x80 | ((ch >> 6) & 0x3F));
+            utf8.push_back(0x80 | (ch & 0x3F));
+        } else {
+            utf8.push_back(0xF0 | ((ch >> 18) & 0x07));
+            utf8.push_back(0x80 | ((ch >> 12) & 0x3F));
+            utf8.push_back(0x80 | ((ch >> 6) & 0x3F));
+            utf8.push_back(0x80 | (ch & 0x3F));
+        }
+        labels.push_back(utf8);
+    }
+
+    // First row
+    std::cout << "     ";
+    for (const auto &label : labels) std::cout << label;
+
+    // Separator row
+    std::cout << std::endl << "   +-";
+    for (size_t i = 0; i < size; ++i) std::cout << "--";
+    std::cout << "-+" << std::endl;
+
+    for (size_t x = 0; x < size; ++x) {
+        std::cout << labels[x] << " | ";
+        for (size_t y = 0; y < size; ++y) {
+            const Cell &cell = grid[x][y];
+
+            switch (cell.type) {
+            case EMPTY:
+                std::cout << "・";
+                break;
+            case GRASS:
+                std::cout << colorize(cell.owner->getColor()) << cell.printSymbol << resetColor;
+                break;
+            case STONE:
+                std::cout << "\033[37m" << "██" << resetColor;
+                break;
+            case BONUS_EXCHANGE:
+                std::cout << "Ｅ";
+                break;
+            case BONUS_STONE:
+                std::cout << "Ｓ";
+                break;
+            case BONUS_ROBBERY:
+                std::cout << "Ｒ";
+                break;
+            default:
+                break;
+            }
+        }
+        std::cout << " | " << labels[x] << std::endl;
+    }
+
+    // Separator row
+    std::cout << "   +-";
+    for (size_t i = 0; i < size; ++i) std::cout << "--";
+    std::cout << "-+" << std::endl;
+
+    // Last row
+    std::cout << "     ";
+    for (const auto &label : labels) std::cout << label;
+    std::cout << std::endl << std::endl;
+}
+```
+
+This method is responsible for printing the board, and everything on it, in the terminal :
+- First, it creates a vector of string `labels`, where the row and column index labels will be stored. This method uses 2-spaces wide characters to properly align the labels with the centers of there associated rows/columns. To construct this vector, it gets the character in UTF-32 and converts it to UTF-8.
+- It then prints the first row, which is mostly the labels side-by-side.
+- It then prints a separator row between the labels and the board content.
+- For all the successive rows, it will print the label, a column separator, and then each cell in that row. The cell content is printed out depending on its type and its optional printing symbol. Then, it prints another column separator, and prints again the label, so that it exists on both sides of each row.
+- It then prints the bottom separator row.
+- Finally, it prints the last row which is mostly the labels side-by-side.
+
+#### Game::display()
+
+```c++
+void Game::display(Player &player, Tile &tile, bool bDisplayQueue) const {
+    clearTerminal();
+    std::cout << colorize(player.getColor()) << player.getName() << resetColor << " - Round " << currentRound << ":" << std::endl << std::endl;
+
+    std::cout << "Current Tile:" << std::endl;
+    tile.print();
+    std::cout << std::endl;
+
+    if (bDisplayQueue) {
+        std::cout << "Next Tiles:" << std::endl;
+        auto nextTiles = tileQueue.nextTiles();
+        tileQueue.printExchangeQueue(nextTiles);
+        std::cout << std::endl;
+    }
+
+    board.display();
+}
+```
+
+This method combines all 3 previously discussed printing methods to print the whole state of the game in one swoop :
+- It first clears the terminal and prints the name of the current player, colorized, as well as the current round.
+- It then calls `Tile:print()`.
+- If asked to print the tile queue, through a boolean passed as parameter, it calls `TileQueue::printExchangeQueue()`.
+- Finally, it calls `Board:display()`.
+
+---
+### I/O Utilities
+
+Utility functions are declared in `utils.hpp`, and used throughout the program. They are mostly responsible for Input/Output management, such as setting the terminal to UTF-8, managing colorized output, managing player input, etc.
+These functions are all quite straightforward.

@@ -70,7 +70,7 @@ bool Board::canPlaceTile(std::pair<size_t, size_t> coords, const Tile &tile, con
     Shape shape = tile.getShape();
 
     const std::array<std::pair<int,int>,4> directions = {{{-1,0}, {1,0}, {0,-1}, {0,1}}};
-    bool touchesOwnCell = false;
+    bool bTouchesOwnCell = false;
 
     for (size_t i = 0; i < shape.size(); ++i) {
         for (size_t j = 0; j < shape[0].size(); ++j) {
@@ -105,14 +105,14 @@ bool Board::canPlaceTile(std::pair<size_t, size_t> coords, const Tile &tile, con
 
                     // Mark that we are touching our territory
                     if (!bIsStartingTile)
-                        touchesOwnCell = true;
+                        bTouchesOwnCell = true;
                 }
             }
         }
     }
 
     // Can place if it's the starting tile or touches own cell
-    return bIsStartingTile || touchesOwnCell;
+    return bIsStartingTile || bTouchesOwnCell;
 }
 
 bool Board::canPlaceTileAnywhere(const Tile &tile, const Player &player) const {
@@ -238,6 +238,10 @@ std::optional<Tile> Board::stealTile(std::pair<size_t, size_t> target, Player *n
         if (!placedTile.bStealable)
             continue;
 
+        // Avoid own tiles
+        if (placedTile.owner == newOwner)
+            continue;
+
         Shape shape = placedTile.tile.getShape();
         size_t posX = placedTile.coords.first;
         size_t posY = placedTile.coords.second;
@@ -249,12 +253,6 @@ std::optional<Tile> Board::stealTile(std::pair<size_t, size_t> target, Player *n
                     continue;
 
                 if (posX + i == target.first && posY + j == target.second) {
-                    Player *oldOwner = placedTile.owner;
-
-                    // Player can't steal tile from itself
-                    if (oldOwner == newOwner)
-                        return std::nullopt;
-
                     // Remove stolen tile from the board
                     for (size_t i2 = 0; i2 < shape.size(); ++i2) {
                         for (size_t j2 = 0; j2 < shape[i2].size(); ++j2) {
