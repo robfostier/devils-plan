@@ -1,19 +1,19 @@
-# Laying Grass - pCCPP2
+# 🟩 Laying Grass - pCCPP2
 
-*Robinson Fostier*
-https://github.com/robfostier/laying-grass.git
+_Auteur : Robinson Fostier_
+_Repo : [github.com/robfostier/laying-grass](https://github.com/robfostier/laying-grass)_
 
 ---
-## User documentation
+## 📄 User documentation
 
-### About The Project
+### 🎯 About The Project
 
 Laying Grass is a CLI version of a board game from The Devil's Plan (데블스 플랜) Netflix reality game show.
 In Laying Grass, players must place grass tiles on a grid-based territory board to expand their territory, with the goal of creating the largest square territory.
 This project is educational. This was done as a student project for Supinfo.
 
 ---
-### Getting started
+### ⚙️ Getting started
 
 #### Prerequisites
 
@@ -50,7 +50,7 @@ make
     - on Linux : `./bin/layingrass`
 
 ---
-### Game rules
+### 🕹️ Game rules
 
 #### Overview
 
@@ -114,9 +114,9 @@ At the end of the game :
 2. If there’s a tie, the player with the most grass tiles overall wins.
 
 ---
-## Technical documentation
+## 📄 Technical documentation
 
-### Project architecture
+### 🧩 Project architecture
 
 #### Directory structure
 
@@ -162,7 +162,7 @@ Three commands are defined within Makefile :
     Use `make clean` to clean the build by removing all files in `obj/` and `bin/`
 
 ---
-### Data structures
+### 🧱 Data structures
 
 #### Tile
 
@@ -428,7 +428,7 @@ It also contains a constructor and 9 public methods :
 - `const Player& determineWinner() const` : A constant method called at the end of the game that determines the winner of the game, as per the game rules. 
 
 ---
-### Program overview
+### 🔄 Program overview
 
 #### Entry point
 
@@ -974,7 +974,7 @@ It removes the tile from the board by emptying each cell's content and erasing t
 - If none of the previous checks matched, it returns `nullopt`.
 
 ---
-### Displaying methods
+### 🖥️ Displaying methods
 
 #### Tile::print()
 
@@ -1148,7 +1148,7 @@ This method combines all 3 previously discussed printing methods to print the wh
 - Finally, it calls `Board:display()`.
 
 ---
-### I/O Utilities
+### 🔧 I/O Utilities
 
 Utility functions are declared in `utils.hpp`, and used throughout the program. They are mostly responsible for Input/Output management, such as setting the terminal to UTF-8, managing colorized output, managing player input, etc.
 These functions are all quite straightforward.
